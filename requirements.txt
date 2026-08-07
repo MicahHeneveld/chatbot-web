@@ -1,0 +1,8 @@
+fastapi>=0.115
+uvicorn[standard]>=0.32
+openai>=1.50
+numpy>=1.26
+
+# Optional: full semantic search with bge-small-en-v1.5 embeddings.
+# Without it the app falls back to a deterministic local hash embedder.
+# fastembed>=0.4

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ECG Knowledge Chatbot</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>ECG Knowledge Chatbot</h1>
+      <p class="subtitle">Answers grounded in the Longitudinal ECG project docs, with citations.</p>
+    </header>
+
+    <main id="chat">
+      <div id="messages" aria-live="polite"></div>
+
+      <div id="suggestions">
+        <button type="button" class="chip" data-q="What is the signal quality index?">What is the signal quality index?</button>
+        <button type="button" class="chip" data-q="What threshold flags motion artifact?">What threshold flags motion artifact?</button>
+        <button type="button" class="chip" data-q="How is SQI aggregated across leads?">How is SQI aggregated across leads?</button>
+        <button type="button" class="chip" data-q="What HRV features are extracted?">What HRV features are extracted?</button>
+      </div>
+
+      <form id="composer">
+        <textarea id="input" rows="1" placeholder="Ask about the ECG project..." aria-label="Message"></textarea>
+        <button id="send" type="submit">Send</button>
+        <button id="clear" type="button">Clear</button>
+      </form>
+    </main>
+  </div>
+
+  <div id="preview-modal">
+    <div class="preview-box" role="dialog" aria-modal="true">
+      <div class="preview-head">
+        <span class="preview-title" id="preview-title"></span>
+        <button class="preview-close" id="preview-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <pre class="preview-body" id="preview-body"></pre>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
