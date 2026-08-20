@@ -3,10 +3,10 @@
 # Usage: scripts\update_knowledge.ps1
 $ErrorActionPreference = "Stop"
 
-# --- Placeholder: point this at the knowledge repo checkout ---
+# --- Point this at the knowledge repo checkout ---
 # Set the KNOWLEDGE_REPO env var, or edit the path below.
 $KnowledgeRepo = $env:KNOWLEDGE_REPO
-if (-not $KnowledgeRepo) { $KnowledgeRepo = "C:\path\to\longitudinal_ecg" }
+if (-not $KnowledgeRepo) { $KnowledgeRepo = "C:\longitudinal_ecg" }
 
 $SourceDir = Join-Path $KnowledgeRepo "knowledge"
 $DestDir = Join-Path $PSScriptRoot "..\knowledge"

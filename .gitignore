@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 .env
 .pytest_cache/
+
+# Transient SQLite sidecar files (the index itself is tracked)
+*.sqlite-shm
+*.sqlite-wal

@@ -129,6 +129,7 @@ class Index:
         self.dim: int | None = None
         self.manifest: dict = {}
         self.embedder = get_embedder()
+        self._id_col = "id"
 
     # ------------------------------------------------------------------ load
 
@@ -161,8 +162,11 @@ class Index:
         uri = Path(sqlite_file).resolve().as_uri() + "?mode=ro"
         self.conn = sqlite3.connect(uri, uri=True)
         try:
+            cols = [r[1] for r in self.conn.execute("PRAGMA table_info(chunks)")]
+            id_col = "chunk_id" if "chunk_id" in cols else "id"
+            self._id_col = id_col
             rows = self.conn.execute(
-                "SELECT id, path, heading_path, section, kind, start_line, "
+                f"SELECT {id_col}, path, heading_path, section, kind, start_line, "
                 "end_line, content, tags, embedding FROM chunks"
             ).fetchall()
         except sqlite3.Error as exc:
@@ -181,18 +185,18 @@ class Index:
             "INTEGER, content TEXT, tags TEXT, embedding BLOB)"
         )
         self.conn.execute("CREATE VIRTUAL TABLE chunks_fts USING fts5(id, content)")
-        local = LocalHashEmbedder()
         rows = []
         for line in jsonl_file.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue
             rec = json.loads(line)
+            rec["id"] = rec.get("chunk_id") or rec["id"]
             rec["tags"] = ",".join(rec.get("tags") or [])
             embedding = rec.get("embedding")
             if embedding:
                 vec = np.asarray(embedding, dtype=np.float32)
             else:
-                vec = np.asarray(local.embed_query(rec["content"]), dtype=np.float32)
+                vec = np.asarray(self.embedder.embed_query(rec["content"]), dtype=np.float32)
             blob = vec.tobytes()
             self.conn.execute(
                 "INSERT INTO chunks (id, path, heading_path, section, kind, "
@@ -285,7 +289,7 @@ class Index:
         try:
             expr = self._fts_match_expr(terms)
             rows = self.conn.execute(
-                "SELECT id FROM chunks_fts WHERE chunks_fts MATCH ? "
+                f"SELECT {self._id_col} FROM chunks_fts WHERE chunks_fts MATCH ? "
                 "ORDER BY bm25(chunks_fts) LIMIT ?",
                 (expr, limit),
             ).fetchall()
@@ -309,7 +313,7 @@ class Index:
         conds = " OR ".join(["content LIKE ? ESCAPE '\\'"] * len(terms))
         params = [f"%{escape_like(t)}%" for t in terms]
         rows = self.conn.execute(
-            f"SELECT id, content FROM chunks WHERE {conds}", params
+            f"SELECT {self._id_col}, content FROM chunks WHERE {conds}", params
         ).fetchall()
         scored = []
         for cid, content in rows:

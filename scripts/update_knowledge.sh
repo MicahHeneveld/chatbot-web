@@ -4,9 +4,9 @@
 # Usage: ./scripts/update_knowledge.sh
 set -euo pipefail
 
-# --- Placeholder: point this at the knowledge repo checkout ---
+# --- Point this at the knowledge repo checkout ---
 # Set the KNOWLEDGE_REPO env var, or edit the path below.
-KNOWLEDGE_REPO="${KNOWLEDGE_REPO:-/path/to/longitudinal_ecg}"
+KNOWLEDGE_REPO="${KNOWLEDGE_REPO:-/c/longitudinal_ecg}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEST_DIR="${SCRIPT_DIR}/../knowledge"
