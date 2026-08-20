@@ -1,0 +1,99 @@
+name: sync-knowledge
+
+# One-way sync of the vendored knowledge index.
+#
+# longitudinal_ecg is the source of truth. This workflow pulls its freshly
+# committed knowledge/{index.sqlite, chunks.jsonl, manifest.json} into this
+# repo and, when anything changed, commits and pushes back to main. Render
+# auto-redeploys on push to main, so the deployed chatbot serves the new index
+# with no manual copy-paste.
+#
+# If the index is unchanged upstream, the workflow exits without committing
+# (no empty commits, no push loop). Manual runs are available via the
+# "Run workflow" button (workflow_dispatch).
+#
+# Access note: the download step reads longitudinal_ecg from its public
+# raw.githubusercontent URL. If that repo is ever made private, set a
+# LONGITUDINAL_ECG_PAT secret (fine-grained token with contents read on
+# longitudinal_ecg) and switch the download step to authenticate with it.
+
+on:
+  schedule:
+    # Daily at 03:17 UTC.
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-knowledge
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Download the latest knowledge index from longitudinal_ecg
+        run: |
+          set -euo pipefail
+          BASE="https://raw.githubusercontent.com/MicahHeneveld/longitudinal_ecg/main/knowledge"
+          mkdir -p knowledge
+          for f in index.sqlite chunks.jsonl manifest.json; do
+            curl -fsSL "$BASE/$f" -o "knowledge/$f"
+          done
+          ls -l knowledge
+
+      - name: Schema guard — fail if app/retrieval.py must be re-vendored
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import pathlib
+          import subprocess
+
+          old_raw = subprocess.check_output(
+              ["git", "show", "HEAD:knowledge/manifest.json"]
+          )
+          old = json.loads(old_raw)
+          new = json.loads(pathlib.Path("knowledge/manifest.json").read_text())
+
+          old_v = old.get("schema_version")
+          new_v = new.get("schema_version")
+          if old_v != new_v:
+              raise SystemExit(
+                  f"SCHEMA VERSION CHANGED: {old_v} -> {new_v}. "
+                  "app/retrieval.py must be re-vendored first "
+                  "(see HANDOFF.md §10), then run this workflow again."
+              )
+          print(f"schema_version ok: {new_v}")
+          PY
+
+      - name: Smoke check — index loads with the vendored retrieval
+        run: |
+          python -m pip install --quiet numpy
+          python - <<'PY'
+          from app.retrieval import Index
+
+          idx = Index.load("knowledge/index.sqlite")
+          assert idx.chunk_count > 0, "index loaded 0 chunks"
+          print(f"index ok: {idx.chunk_count} chunks, dim={idx.embedding_dim}")
+          PY
+
+      - name: Commit and push when the index changed
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add knowledge/index.sqlite knowledge/chunks.jsonl knowledge/manifest.json
+          if git diff --cached --quiet; then
+            echo "Knowledge index is already up to date."
+            exit 0
+          fi
+          git commit -m "Vendor updated knowledge index from longitudinal_ecg"
+          git push origin main

@@ -127,18 +127,47 @@ Open http://127.0.0.1:8000. If fastembed is not installed, retrieval still works
 
 ## 9. Refreshing the index (one-way sync)
 
-The knowledge repo is the source of truth. After its docs change:
+The knowledge repo (`longitudinal_ecg`) is the source of truth. It keeps
+`knowledge/{index.sqlite, chunks.jsonl, manifest.json}` committed (its
+pre-commit hook rebuilds them whenever docs change). This repo vendors a copy
+of those three files.
 
-```bash
-# knowledge repo
+**Primary path — automated (no manual copy-paste):**
+`.github/workflows/sync-knowledge.yml` runs daily (and on demand via the
+"Run workflow" button) and:
+
+1. Downloads the three index files from
+   `https://raw.githubusercontent.com/MicahHeneveld/longitudinal_ecg/main/knowledge/`.
+2. Fails loudly if `manifest.json` `schema_version` changed — that means
+   `app/retrieval.py` must be re-vendored first (§10).
+3. Runs a smoke check that the index actually loads with the vendored
+   retrieval (`app/retrieval.py`), catching schema drift like a renamed
+   `chunk_id` column.
+4. Commits and pushes back to `main` only when the index changed. Render
+   auto-redeploys on push, so the deployed chatbot serves the fresh index.
+
+No action is needed for routine doc updates: commit docs in `longitudinal_ecg`
+(the pre-commit hook rebuilds the index), and the next scheduled run vendors
+them. To update immediately, trigger the workflow manually.
+
+**Manual fallback — one-off local refresh:**
+
+```powershell
+# knowledge repo: rebuild + commit the index
 python -m tools.indexer build
 git add knowledge && git commit
 
-# chatbot repo
+# chatbot repo: copy the three index files over
 scripts/update_knowledge.ps1    # or ./scripts/update_knowledge.sh
 ```
 
-The script pulls the knowledge repo and copies `knowledge/{index.sqlite, chunks.jsonl, manifest.json}` into `chatbot-web/knowledge/`. Commit and push; Render redeploys. The chatbot never writes upstream.
+The script copies `knowledge/{index.sqlite, chunks.jsonl, manifest.json}` from
+`$KNOWLEDGE_REPO` (default `C:\longitudinal_ecg`) into `chatbot-web/knowledge/`.
+Commit and push; Render redeploys. The chatbot never writes upstream.
+
+**Access note:** the workflow's download step reads `longitudinal_ecg` from its
+public `raw.githubusercontent.com` URL. If that repo goes private, set a
+`LONGITUDINAL_ECG_PAT` secret and authenticate the download step with it.
 
 ## 10. Vendor-sync (when the schema changes)
 

@@ -20,7 +20,9 @@ This repo ships a generated placeholder index (`knowledge/chunks.jsonl` + `manif
 python scripts/make_placeholder_index.py
 ```
 
-To pull the real index from the knowledge repo instead, run `scripts/update_knowledge.ps1` (Windows) or `./scripts/update_knowledge.sh` (bash) — set the `KNOWLEDGE_REPO` env var or edit the placeholder path in the script.
+To pull the real index from the knowledge repo instead, run `scripts/update_knowledge.ps1` (Windows) or `./scripts/update_knowledge.sh` (bash) — set the `KNOWLEDGE_REPO` env var or use the script's default (`C:\longitudinal_ecg`).
+
+**Keeping the index fresh is automated**: `.github/workflows/sync-knowledge.yml` pulls the latest index from the `MicahHeneveld/longitudinal_ecg` repo daily (and on demand via the workflow's "Run workflow" button) and pushes it back to `main` when it changes — Render redeploys automatically. See [HANDOFF.md](HANDOFF.md) §9 for details.
 
 If `fastembed` is installed (`pip install fastembed`), retrieval uses `BAAI/bge-small-en-v1.5` (384-dim) embeddings; otherwise a deterministic local hash embedder (512-dim) is used, with a dimension guard that degrades to keyword-only search when the index was built with a different backend.
 
