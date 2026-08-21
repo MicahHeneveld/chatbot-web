@@ -15,7 +15,7 @@ services:
       - key: LLM_BASE_URL
         value: https://api.openai.com/v1
       - key: LLM_MODEL
-        value: gpt-4o-mini
+        value: gpt-5.4-mini
       - key: GITHUB_REPO
         value: ""
       - key: CORS_ORIGINS
